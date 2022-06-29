@@ -16,7 +16,7 @@ Follow this link to accès the "Building XWiki from sources" page : https://dev.
 rsync -avz /home/user/.m2 xwiki:/root/docker-compose/xwiki/data/.m2
 ```
 
-### 3 - Ajouter les lignes suivantes dans le fichier xwiki.properties dans /xwiki/data
+### 3 - Add the following lines to the xwiki.properties file in /xwiki/data
 ```
 extension.repositories=maven-local:maven:file:///usr/local/xwiki/data/.m2/repository
 
