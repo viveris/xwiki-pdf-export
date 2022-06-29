@@ -1,0 +1,102 @@
+{{velocity output="false"}}
+  #set($sectionClass = 'Documentation.Code.SectionClass')
+  #set($sectionTemplate = 'Documentation.Code.SectionTemplate')
+  #set($parentPropName = 'parentSection')
+  #set($numberingPropName = 'numbering')
+
+  ## Delete TOC and others elements that are not correctly displayed in the export
+  #macro(deleteTOC $docLine)
+      #if($docLine.contains('{{toc numbered="true"/}}')||$docLine.contains('{{box cssClass="floatinginfobox"')||$docLine.contains('{{toc/}}')||$docLine.contains('{{box}}')||$docLine.contains('{{/box}}')||$docLine.contains('(% class="box" %)')||$docLine.contains('(% class="box infomessage" %)'||$docLine.contains('(% class="box warningmessage" %)')))
+        #set($docLine='')
+      #end
+  #end
+
+  ## Modify Attachment lines to display it correctly
+  #macro(lineAttachment $docLine $docReference)
+    ## if the line match an attachment not linked to another page
+    #if($docLine.contains('[[image:') && !$docLine.contains('[[image:https'))
+      #set($attach=$docLine.split(':'))
+      ## $opt is the name of the attachment with options (ex : height=50%)
+      #set($opt=$attach[1])
+      ## if there is options associated with the attachment
+      #if($opt.contains('||'))
+        #set($pipe=$opt.split('\|\|'))
+        ## $pipe[0] is the name of the attachment 
+        #set($docLine=$attach[0]+':'+$docReference+'@'+$pipe[0]+']]')
+      #else
+      #set($docLine=$attach[0]+':'+$docReference+'@'+$opt)
+      #end
+    #end
+  #end
+  
+  ## Modify heading lines to indent correctly
+  #macro(indentHeadings $docLine)
+      #set($docChar=$docLine.split(''))
+      #set($strsize=$docChar.size())
+      #set($strsize = $strsize - 1)
+      #if($strsize<0)
+        #set($strsize=0)
+      #end
+      #if(($docChar[0]=='=') && ($docChar[$strsize]=='='))
+        #set($docLine=$equals+$docLine+$equals)
+      #end  
+  #end
+  
+  #macro(modifyDocument $docArray $docReference)
+    #foreach($docLine in $docArray)
+      #deleteTOC($docLine)
+      #lineAttachment($docLine $docReference)
+      #indentHeadings($docLine)
+      $docLine
+    #end
+  #end
+
+  ## Indent titles of all the pages
+  #macro(indentTitles $sectionChildDocument $sectionNum)
+    #set($equals = "")
+    #set($equalonly = "=" )
+    #set($start = 0)
+    #set($range = [$start..$sectionNum])
+    #foreach($i in $range)
+      #set($equals = "$equals$equalonly" )
+    #end
+    $equals$sectionChildDocument.displayTitle$equals
+  #end
+
+  ## Building the hierarchy view (TOC) of sections
+  #macro(displaySections $parentReference $sectionNum)
+    #set($sectionChildren = $services.query.hql("select distinct obj.name from BaseObject obj, LongProperty numbering, StringProperty parent where obj.className = :sectionClass and obj.name <> :sectionTemplate and obj.id = numbering.id.id and obj.id = parent.id.id and parent.id.name = :parentPropName and numbering.id.name = :numberingPropName and parent.value = :parentReference order by numbering.value asc").bindValue('parentReference', $services.model.serialize($parentReference, 'local')).bindValue('sectionClass', $sectionClass).bindValue('sectionTemplate', $sectionTemplate).bindValue('parentPropName', $parentPropName).bindValue('numberingPropName', $numberingPropName).execute())
+    ##For each pages
+    #foreach($sectionChild in $sectionChildren)
+      document.getElementById($sectionChild).setAttribute('checked','checked');
+      #set($sectionChildRef = $services.model.resolveDocument($sectionChild))
+      #set($sectionChildDocument = $xwiki.getDocument($sectionChildRef))
+      #if ($services.security.authorization.hasAccess('view', $sectionChildRef))
+        ## Pages marked as "not included in export" are excluded when exporting indeed, but included in standard view mode.
+        #if(!$services.multilingualHtmlExport.isExporting() || $services.documentation.isIncludedInExports($sectionChildRef, false))
+        
+          ##Title display
+          #indentTitles($sectionChildDocument $sectionNum)
+          #set($doctxt = $sectionChildDocument.getContent().toString())
+          #set($docArray=$doctxt.split('\n'))
+
+          ##Modify pages lines by lines
+          #set($docReference = $sectionChildDocument.documentReference)
+          #modifyDocument($docArray $docReference)
+
+          #set($sectionNum = $sectionNum + 1)
+          #displaySections($sectionChildRef $sectionNum)
+        #end
+      #end
+    #end
+    #set($sectionNum = $sectionNum - 1)
+  #end
+{{/velocity}}
+
+{{velocity}}
+  #set($root = $xcontext.macro.params.root)
+  #if("$!root" == '')
+    #set($root = 'Documentation.WebHome')
+  #end
+  #displaySections($services.model.resolveDocument($root) 0)
+{{/velocity}}
