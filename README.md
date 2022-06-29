@@ -60,16 +60,14 @@ sql-mode=""
 ```
 Then restart your server and the error should no longer appear.
 
-### 6 - Create a page on xwiki outside the documentation application and paste the script in the source code of this page
-
 ## Usage
 
 The export of attachments in the PDF is currently done in one way only.
 
 Each attachment of the documentation pages must be imported as an attachment (e.g. [[image:archi_git_repositories_full.png]]), no attachment of another page must be used by referencing it by URL.
 
-Be sure to have all your attachments imported into the pages 
-Then simply use the xwiki PDF export
+Be sure to have all your attachments imported into the pages.
+Create a page on xwiki outside the documentation application and paste the script in the source code of this page then simply use the xwiki PDF export
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
