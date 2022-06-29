@@ -7,16 +7,16 @@ This script uses the Application Documentation, please make sure you have a prop
 
 ## Installation
 
-1 - Modify the setting.xml file in /home/.m2
+### 1 - Modify the setting.xml file in /home/.m2
 
 Follow this link to accès the "Building XWiki from sources" page : https://dev.xwiki.org/xwiki/bin/view/Community/Building/
 
-2 - Copy the maven repo locally on the server  :
+### 2 - Copy the maven repo locally on the server  :
 ```bash
 rsync -avz /home/user/.m2 xwiki:/root/docker-compose/xwiki/data/.m2
 ```
 
-3 - Ajouter les lignes suivantes dans le fichier xwiki.properties dans /xwiki/data
+### 3 - Ajouter les lignes suivantes dans le fichier xwiki.properties dans /xwiki/data
 ```
 extension.repositories=maven-local:maven:file:///usr/local/xwiki/data/.m2/repository
 
@@ -25,12 +25,12 @@ extension.repositories=maven-xwiki:maven:http://nexus.xwiki.org/nexus/content/gr
 extension.repositories=extensions.xwiki.org:xwiki:http://extensions.xwiki.org/xwiki/rest/
 ```
 
-4 - Restart the docker or the XWiki server
+### 4 - Restart the docker or the XWiki server
 ```bash
  docker restart xwiki 
 ```
 
-5 - Install the extension on the wiki
+### 5 - Install the extension on the wiki
 
 In "Advanced search" the extension ID and the version of the extension to install must match perfectly.
 
@@ -45,7 +45,7 @@ For example for the Documentation application, the extension ID is: com.xwiki.do
 <artifactId>application-documentation</artifactId>
 <version>1.7</version>
 ```
-5.1 - SQL error after installation
+#### 5.1 - SQL error after installation
 
 It is possible that an SQL error will appear after the installation of the application on the Table Of Content page.
 
@@ -60,7 +60,7 @@ sql-mode=""
 ```
 Then restart your server and the error should no longer appear.
 
-6 - Create a page on xwiki outside the documentation application and paste the script in the source code of this page
+### 6 - Create a page on xwiki outside the documentation application and paste the script in the source code of this page
 
 ## Usage
 
