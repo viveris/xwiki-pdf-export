@@ -1,0 +1,539 @@
+From c35400cb8fd73e57755d5dcf303fd147699f9a0e Mon Sep 17 00:00:00 2001
+From: Nicolas BAQUE <nicoware@hotmail.fr>
+Date: Fri, 1 Jul 2022 15:05:39 +0200
+Subject: [PATCH] Add checkboxes to select pages to export
+
+---
+ .../Documentation/Code/CreateMacros.xml       |  66 +++++
+ .../Documentation/Code/DocumentationTable.xml |  56 +++-
+ .../Code/HTMLExport/HTMLExportSkin.xml        |   2 +-
+ .../resources/Documentation/Code/MoveForm.xml | 266 ++++++++++++++++++
+ .../Documentation/Code/MoveSheet.xml          |   8 +-
+ .../Documentation/Code/Translations.xml       |   6 +
+ 6 files changed, 396 insertions(+), 8 deletions(-)
+ create mode 100644 application-documentation-ui/src/main/resources/Documentation/Code/MoveForm.xml
+
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/CreateMacros.xml b/application-documentation-ui/src/main/resources/Documentation/Code/CreateMacros.xml
+index d36bfc7..08a8531 100644
+--- a/application-documentation-ui/src/main/resources/Documentation/Code/CreateMacros.xml
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/CreateMacros.xml
+@@ -142,5 +142,71 @@
+     &lt;/dd&gt;
+   &lt;/dl&gt;
+ #end
++
++#macro (locationPickerCustomized $options)
++  #set ($discard = $xwiki.get('jsfx').use('uicomponents/widgets/validation/livevalidation_prototype.js'))
++  #set ($discard = $xwiki.get('ssfx').use('uicomponents/widgets/validation/livevalidation.css', true))
++  #set ($discard = $xwiki.get('jsfx').use('uicomponents/widgets/locationPicker.js', true))
++  #set ($discard = $xwiki.get('ssfx').use('uicomponents/widgets/locationPicker.css', true))
++  &lt;dl class="location-picker"&gt;
++    ##
++    ## ---------------------------------------------------------------------------------------------------------
++    ## Title field
++    ## ---------------------------------------------------------------------------------------------------------
++    ##
++    #set ($titleField = $options.title)
++    #set ($value = $request.getParameter($titleField.name))
++    #if (!$value)
++      #set ($value = $titleField.value)
++    #end
++    #set ($escapedValue = $escapetool.xml($value))
++    #if ($titleField.label)
++      &lt;dt&gt;
++        &lt;label for="$!{options.id}Title"&gt;$services.localization.render($titleField.label)&lt;/label&gt;
++        &lt;span class="xHint"&gt;$!services.localization.render($titleField.hint)&lt;/span&gt;
++      &lt;/dt&gt;
++      &lt;dd&gt;
++        &lt;input type="text" id="$!{options.id}Title" name="$titleField.name" value="$!escapedValue"
++          class="location-title-field" placeholder="$!services.localization.render($titleField.placeholder)" /&gt;
++      &lt;/dd&gt;
++    #elseif ($titleField)
++      &lt;dt class="hidden"&gt;&lt;/dt&gt;
++      &lt;dd class="hidden"&gt;
++        &lt;input type="hidden" name="$titleField.name" value="$!escapedValue"
++          class="location-title-field" /&gt;
++      &lt;/dd&gt;
++    #end
++    ##
++    ## ---------------------------------------------------------------------------------------------------------
++    ## Location preview
++    ## ---------------------------------------------------------------------------------------------------------
++    ##
++    &lt;dt&gt;
++      &lt;label&gt;$services.localization.render($options.preview.label)&lt;/label&gt;
++      &lt;span class="xHint"&gt;$services.localization.render($options.preview.hint)&lt;/span&gt;
++    &lt;/dt&gt;
++    &lt;dd&gt;
++      #if ($isDocumentTreeAvailable)
++        #documentPickerModal($options)
++        #locationPickerActions
++      #end
++      ## The breadcrumb is updated whenever the user changes the parent page. This causes the breadcrumb element to be
++      ## constantly replaced, preventing us from displaying the live validation message after it. In order to overcome
++      ## this, we wrap the breadcrumb element in a DIV that remains the same.
++      &lt;div class="breadcrumb-container"&gt;
++        ## Note: We display only the parent reference here. The new document part will be added from JavaScript.
++        #hierarchy($options.parent.reference)
++      &lt;/div&gt;
++      ##
++      ## ---------------------------------------------------------------------------------------------------------
++      ## Location advanced edit
++      ## ---------------------------------------------------------------------------------------------------------
++      ##
++      #locationAdvancedEdit($options)
++    &lt;/dd&gt;
++  &lt;/dl&gt;
++#end
++
++
+ {{/velocity}}</content>
+ </xwikidoc>
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/DocumentationTable.xml b/application-documentation-ui/src/main/resources/Documentation/Code/DocumentationTable.xml
+index 28e8e5b..6e387af 100644
+--- a/application-documentation-ui/src/main/resources/Documentation/Code/DocumentationTable.xml
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/DocumentationTable.xml
+@@ -21,6 +21,7 @@
+ -->
+ 
+ <xwikidoc version="1.3" reference="Documentation.Code.DocumentationTable" locale="">
++
+   <web>Documentation.Code</web>
+   <name>DocumentationTable</name>
+   <language/>
+@@ -124,6 +125,7 @@
+     </property>
+     <property>
+       <code>require(['jquery', 'xwiki-events-bridge'], function($) {
++
+   var initFilters = function() {
+     /*
+      * tagCloud : The list of tag clouds.
+@@ -513,8 +515,9 @@
+           #set($sectionTags = $services.query.hql("select distinct tag from BaseObject as obj, DBStringListProperty as prop join prop.list as tag where obj.className=:tagClass and obj.id=prop.id.id and prop.id.name='tags' and obj.name = :sectionChild").bindValue('tagClass', 'XWiki.TagClass').bindValue('sectionChild', $services.model.serialize($sectionChildRef, 'local')).execute())
+           &lt;tr&gt;
+             &lt;td&gt;&lt;a label="$sectionChildDocument.displayTitle" href="$sectionChildDocument.getURL()"&gt;$sectionChildDocument.displayTitle&lt;/a&gt;&lt;/td&gt;
++            &lt;td&gt;&lt;input type=checkbox "class="save-cb-state" name="check$sectionChildDocument.documentReference" value="yes"&gt; &lt;/input&gt; &lt;/td&gt;
+             &lt;td&gt;#if($services.model.serialize($parentReference, 'local') != 'Documentation.WebHome')&lt;a label="$sectionParentDocument.displayTitle" href="$sectionParentDocument.getURL()"&gt;$sectionParentDocument.displayTitle&lt;/a&gt;#end&lt;/td&gt;
+-            &lt;td class="tags-row hidden"&gt;$stringtool.join($sectionTags, '|')&lt;/td&gt;
++            &lt;td&gt;&lt;input type=checkbox "class="save-cb-state" name="check$sectionParentDocument.documentReference" value="yes"&gt; &lt;/input&gt; &lt;/td&gt;
+           &lt;/tr&gt;
+           #displayTableSections($sectionChildRef)
+         #end
+@@ -522,6 +525,7 @@
+     #end
+     &lt;/ul&gt;
+   #end
++  
+ {{/velocity}}
+ 
+ {{velocity}}
+@@ -538,13 +542,59 @@
+     &lt;table class="grid sortable filterable table-striped" id="documentation-table"&gt;
+       &lt;thead class="sortHeader"&gt;
+         &lt;tr&gt;
+-          &lt;th&gt;$services.localization.render('home.sheet.table.section')&lt;/th&gt;
+           &lt;th&gt;$services.localization.render('home.sheet.table.parentsection')&lt;/th&gt;
+-          &lt;th class="hidden"&gt;&lt;/th&gt;
++          &lt;th&gt;Checkbox $services.localization.render('home.sheet.table.parentsection')&lt;/th&gt;
++          &lt;th&gt;$services.localization.render('home.sheet.table.section')&lt;/th&gt;
++          &lt;th&gt;Checkbox $services.localization.render('home.sheet.table.section')&lt;/th&gt;
+         &lt;/tr&gt;
+       &lt;/thead&gt;
+       &lt;tbody&gt;
+         #displayTableSections($services.model.resolveDocument($root))
++
++        &lt;script&gt;
++          // Avoid scoping issues by encapsulating code inside anonymous function
++          (function() {
++            // variable to store our current state
++            var cbstate;
++            
++            // bind to the onload event
++            window.addEventListener('load', function() {
++              // Get the current state from localstorage
++              // State is stored as a JSON string
++              cbstate = JSON.parse(localStorage['CBState'] || '{}');
++            
++              // Loop through state array and restore checked 
++              // state for matching elements
++              for(var i in cbstate) {
++                var el = document.querySelector('input[name="' + i + '"]');
++                if (el) el.checked = true;
++              }
++            
++              // Get all checkboxes that you want to monitor state for
++              var cb = document.getElementsByClassName('save-cb-state');
++            
++              // Loop through results and ...
++              for(var i = 0; i &lt; cb.length; i++) {
++            
++                //bind click event handler
++                cb[i].addEventListener('click', function(evt) {
++                  // If checkboxe is checked then save to state
++                  if (this.checked) {
++                    cbstate[this.name] = true;
++                  }
++              
++              // Else remove from state
++                  else if (cbstate[this.name]) {
++                    delete cbstate[this.name];
++                  }
++              
++              // Persist state
++                  localStorage.CBState = JSON.stringify(cbstate);
++                });
++              }
++            });
++          })();
++          &lt;/script&gt;
+       &lt;/tbody&gt;
+     &lt;/table&gt;
+   {{/html}}
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/HTMLExport/HTMLExportSkin.xml b/application-documentation-ui/src/main/resources/Documentation/Code/HTMLExport/HTMLExportSkin.xml
+index 5b09047..580c116 100644
+--- a/application-documentation-ui/src/main/resources/Documentation/Code/HTMLExport/HTMLExportSkin.xml
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/HTMLExport/HTMLExportSkin.xml
+@@ -130,7 +130,7 @@
+     <property>
+       <content>## We need to add those variables here (and not in the SectionSheet) as the content of the document isn't rendered at the good moment to override those vars (they are either already used or will be overriden by other .vm)
+ #set($displayMainMenu = $false)
+-#set($showLeftPanels = 0)
++#set($showLeftPanels = 1)
+ #set($showRightPanels = 0)
+ #set($displayDocExtra = $false)
+ #set($displayContentMenu = $false)
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/MoveForm.xml b/application-documentation-ui/src/main/resources/Documentation/Code/MoveForm.xml
+new file mode 100644
+index 0000000..b113a8f
+--- /dev/null
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/MoveForm.xml
+@@ -0,0 +1,266 @@
++<?xml version="1.0" encoding="UTF-8"?>
++
++<!--
++ * See the NOTICE file distributed with this work for additional
++ * information regarding copyright ownership.
++ *
++ * This is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU Lesser General Public License as
++ * published by the Free Software Foundation; either version 2.1 of
++ * the License, or (at your option) any later version.
++ *
++ * This software is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this software; if not, write to the Free
++ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
++ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
++-->
++
++<xwikidoc version="1.3" reference="Documentation.Code.MoveForm" locale="">
++  <web>Documentation.Code</web>
++  <name>MoveForm</name>
++  <language/>
++  <defaultLanguage/>
++  <translation>0</translation>
++  <creator>xwiki:XWiki.Admin</creator>
++  <creationDate>1451602800000</creationDate>
++  <parent>Documentation.Code.WebHome</parent>
++  <author>xwiki:XWiki.Admin</author>
++  <contentAuthor>xwiki:XWiki.Admin</contentAuthor>
++  <date>1451602800000</date>
++  <contentUpdateDate>1451602800000</contentUpdateDate>
++  <version>1.1</version>
++  <title/>
++  <comment/>
++  <minorEdit>false</minorEdit>
++  <syntaxId>xwiki/2.1</syntaxId>
++  <hidden>true</hidden>
++  <content>{{velocity}}
++
++  {{html clean="false" wiki="true"}}
++    ##
++    ## Code copied from create.vm
++    ##
++    #template('refactoring_macros.vm')
++    #template('locationPicker_macros.vm')
++    
++    &lt;form action="?sheet=Documentation.Code.MoveSheet&amp;step=2" method="post" id="rename" class="xform"&gt;
++      &lt;div class="hidden"&gt;
++        ## CSRF prevention
++        &lt;input type="hidden" name="form_token" value="$!{services.csrf.getToken()}" /&gt;
++        ## Perform the rename asynchronously.
++        &lt;input type="hidden" name="async" value="true" /&gt;
++      &lt;/div&gt;
++      &lt;div class="row"&gt;
++        &lt;div class="col-xs-12 col-lg-6"&gt;
++          &lt;dl&gt;
++            ##------------
++            ## Source Page
++            ##------------
++            ##Usage of the default #locationPicker macro to select source form the home page
++            
++            {{template name="locationPicker_macros.vm" /}}
++
++            #set ($documentReference = $services.model.resolveDocument($doc.documentReference.parent))
++            #set ($selectedDocument = $xwiki.getDocument($documentReference))
++  
++              #locationPicker({
++                'id': 'target',
++                'preview': {
++                  'label': 'core.create.locationPreview.label',
++                  'hint': 'core.create.locationPreview.hint'
++                },
++                'parent': {
++                  'label': 'core.create.spaceReference.label',
++                  'hint': 'core.create.spaceReference.hint',
++                  'name': 'spaceReference',
++                  'reference': $documentReference.parent,
++                  'placeholder': 'core.create.spaceReference.placeholder'
++                },
++                'name': {
++                  'label': 'core.create.name.label',
++                  'hint': 'core.create.name.hint',
++                  'name': 'name',
++                  'value': $documentReference.name,
++                  'placeholder': 'core.create.name.placeholder'
++                }
++              })
++ 
++            <!-- #set ($documentReference = $services.model.resolveDocument('Main.WebHome'))
++            #set ($selectedDocument = $xwiki.getDocument($documentReference))
++            #locationPickerCustomized({
++              'id': 'target',
++              'preview': {
++                'label': 'core.rename.source.label',
++                'hint': 'core.rename.source.hint'
++              },
++              'parent': {
++                'label': 'core.create.spaceReference.label',
++                'hint': 'core.create.spaceReference.hint',
++                'name': 'spaceReference',
++                'reference': $documentReference.parent,
++                'placeholder': 'core.create.spaceReference.placeholder'
++              },
++              'name': {
++                'label': 'core.create.name.label',
++                'hint': 'core.create.name.hint',
++                'name': 'name',
++                'value': $documentReference.name,
++                'placeholder': 'core.create.name.placeholder'
++              }
++            })  -->
++            <!-- #locationPickerCustom({
++              'id': 'target',
++              'preview': {
++                'label': 'core.rename.source.label',
++                'hint': 'core.rename.source.hint'
++              },
++              'parent': {
++                'label': 'core.create.spaceReference.label',
++                'hint': 'core.create.spaceReference.hint',
++                'name': 'spaceReference',
++                'reference': $documentReference.parent,
++                'placeholder': 'core.create.spaceReference.placeholder'
++              },
++              'name': {
++                'label': 'core.create.name.label',
++                'hint': 'core.create.name.hint',
++                'name': 'name',
++                'value': $documentReference.name,
++                'placeholder': 'core.create.name.placeholder'
++              }-->
++            
++            ##---------------
++            ## Children field
++            ##---------------
++            #displayChildrenCheckbox({
++              'label': 'core.rename.children.label',
++              'hint': 'core.rename.children.hint'
++            })
++            ##------------
++            ## Links field
++            ##------------
++            #displayLinksCheckbox({
++              'label': 'core.rename.links.label',
++              'hint': 'core.rename.links.hint'
++            })
++            ##--------------------
++            ## Auto redirect field
++            ##--------------------
++            ## We set Autoredirect to off by default for the following reasons:
++            ## - Several users have reported a usability issue about automatic redirects. The way they express it is the
++            ##   following: "I have duplicates pages in my wiki. I don't understand why this is happening. I'm choosing to
++            ##   rename pages and not to copy them but I still get duplicates in the Navigation panel".
++            ## - Automatic redirects are especially useful for public wikis where users can have bookmark on pages and you
++            ##   don't want to break them. It can also be useful for internal wikis but it's less an issue.
++            ## - Even for public wikis not all pages need automatic redirects. Technical pages don't need them for example.
++            ## - We don't have management UIs for redirects FTM and reducing the number of redirects make the wiki easier
++            ##   to manage.
++            ## In the future we'll offer a config option to define the default behavior, see
++            ## http://jira.xwiki.org/browse/XWIKI-13384
++            #set ($checked = $request.autoRedirect == 'true')
++            <!-- &lt;dt&gt;
++              &lt;label&gt;
++                &lt;input type="checkbox" name="autoRedirect" value="true" #if ($checked)checked="checked"#end /&gt;
++                $services.localization.render('core.rename.autoRedirect.label')
++              &lt;/label&gt;
++              ## The value submitted when the checkbox is not checked, used to preserve the form state.
++              &lt;input type="hidden" name="autoRedirect" value="false" /&gt;
++            &lt;/dt&gt;
++            &lt;dd&gt;
++              &lt;span class="xHint"&gt;$services.localization.render('core.rename.autoRedirect.hint')&lt;/span&gt;
++            &lt;/dd&gt;
++          &lt;/dl&gt;
++        &lt;/div&gt;
++        &lt;div class="col-xs-12 col-lg-6"&gt; -->
++          ##------------
++          ## Target Page
++          ##------------
++          #set ($parentReference = $doc.documentReference.parent)
++          #set ($name = $doc.name)
++          #if (!$sourcePageIsTerminal)
++            #set ($name = $parentReference.name)
++            #set ($parentReference = $parentReference.parent)
++          #end
++          #locationPickerCustom({
++            'id': 'target',
++            'title': {
++              'label': 'core.rename.target.title.label',
++              'hint': 'core.rename.target.title.hint',
++              'name': 'newPageTitle',
++              'value': $doc.plainTitle,
++              'placeholder': 'core.create.name.placeholder'
++            },
++            'preview': {
++              'label': 'core.rename.target.location.label',
++              'hint': 'core.rename.target.location.hint'
++            },
++            'wiki': {
++              'label': 'core.rename.target.wiki.label',
++              'hint': 'core.rename.target.wiki.hint',
++              'name': 'newWikiName',
++              'value': $doc.wiki
++            },
++            'parent': {
++              'label': 'core.rename.target.parent.label',
++              'hint': 'core.rename.target.parent.hint',
++              'name': 'newSpaceName',
++              'reference': $parentReference,
++              'placeholder': 'core.create.spaceReference.placeholder'
++            },
++            'name': {
++              'label': 'core.rename.target.name.label',
++              'hint': 'core.rename.target.name.hint',
++              'name': 'newPageName',
++              'value': $name,
++              'placeholder': 'core.create.name.placeholder'
++            }
++          })
++          #set($sectionClass = 'Documentation.Code.SectionClass')
++          #set($sourceDocumentReferenceSerialized = $services.model.serialize($doc.documentReference, 'local'))
++          #set($sectionObj = $doc.getObject($sectionClass))
++          #if($sectionObj)
++            #set($sourceSectionNumber = $sectionObj.getProperty('numbering').value)
++          #end
++          #set($sectionSiblings = $xwiki.searchDocuments(', XWikiSpace s, BaseObject o, LongProperty p where doc.translation = 0 and doc.space = s.reference and s.parent = ?  and o.name = doc.fullName and o.className = ? and p.id.id = o.id and p.name = ? and doc.fullName &lt;&gt; ? order by p.value asc', 0, 0, [$services.model.serialize($parentReference, 'local'), $sectionClass, 'numbering', 'Documentation.Code.SectionTemplate']))
++          &lt;dl id="previous-sibling-container"&gt;
++            &lt;dt&gt;
++              &lt;label&gt;$services.localization.render('section.create.previoussibling.label')&lt;/label&gt;
++              &lt;span class="xHint"&gt;$services.localization.render('section.create.previoussibling.hint')&lt;/span&gt;
++            &lt;/dt&gt;
++            <!-- Emplacement dd tag New Location-->
++            &lt;dd&gt;
++              &lt;select name="numbering" id="previous-sibling"&gt;
++                &lt;option data-previoussibling="" value="1"&gt;&lt;/option&gt;
++                #foreach($sectionSibling in $sectionSiblings)
++                  #set($sectionSiblingRef = $services.model.resolveDocument($sectionSibling))
++                  #set($sectionSiblingNumber = $services.documentation.numberingManager.getNumberingFromSibling($sectionSiblingRef))
++                  #if($sourceDocumentReferenceSerialized != $sectionSibling &amp;&amp;
++                      $sourceSectionNumber != $sectionSiblingNumber &amp;&amp;
++                      $services.security.authorization.hasAccess('view', $sectionSiblingRef))
++                    &lt;option data-previoussibling="$sectionSibling" value="$sectionSiblingNumber"&gt;$xwiki.getDocument($sectionSiblingRef).displayTitle&lt;/option&gt;
++                  #end
++                #end
++              &lt;/select&gt;
++            &lt;dd&gt;
++          &lt;/dl&gt;
++        &lt;/div&gt;
++      &lt;/div&gt;
++
++      
++      &lt;div class="buttons"&gt;
++        &lt;span class="buttonwrapper"&gt;
++          &lt;input type="submit" value="Move to documentation" class="button" /&gt;
++        &lt;/span&gt;
++        &lt;span class="buttonwrapper"&gt;
++          &lt;a class="secondary button" href="$doc.getURL()"&gt;$services.localization.render('cancel')&lt;/a&gt;
++        &lt;/span&gt;
++      &lt;/div&gt;
++    &lt;/form&gt;
++  {{/html}}
++{{/velocity}}</content>
++</xwikidoc>
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/MoveSheet.xml b/application-documentation-ui/src/main/resources/Documentation/Code/MoveSheet.xml
+index ea8b7ed..82ce680 100644
+--- a/application-documentation-ui/src/main/resources/Documentation/Code/MoveSheet.xml
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/MoveSheet.xml
+@@ -69,7 +69,7 @@
+           #error($services.localization.render('core.rename.emptyName'))
+         {{/html}}
+ 
+-        {{include reference="Documentation.Code.RenameForm" /}}
++        {{include reference="Documentation.Code.MoveForm" /}}
+       #else
+ 
+         {{html}}
+@@ -110,7 +110,7 @@
+             $xwiki.getURL($newDocReference)]))
+           {{/html}}
+ 
+-          {{include reference="Documentation.Code.RenameForm" /}}
++          {{include reference="Documentation.Code.MoveForm" /}}
+         #elseif (!$xwiki.hasAccessLevel('edit', $xcontext.user, $newDocReferenceAsString))
+           $response.setStatus(403)
+ 
+@@ -119,7 +119,7 @@
+             [${escapetool.xml($newDocReferenceAsString)}]))
+           {{/html}}
+ 
+-          {{include reference="Documentation.Code.RenameForm" /}}
++          {{include reference="Documentation.Code.MoveForm" /}}
+         #else
+           ## Before renaming, set the new section number
+           #set($sectionObj = $doc.getObject('Documentation.Code.SectionClass'))
+@@ -156,7 +156,7 @@
+         #end
+       #end
+   #else
+-    {{include reference="Documentation.Code.RenameForm" /}}
++    {{include reference="Documentation.Code.MoveForm" /}}
+   #end
+ #end
+ {{/velocity}}</content>
+diff --git a/application-documentation-ui/src/main/resources/Documentation/Code/Translations.xml b/application-documentation-ui/src/main/resources/Documentation/Code/Translations.xml
+index 1164327..9de2530 100644
+--- a/application-documentation-ui/src/main/resources/Documentation/Code/Translations.xml
++++ b/application-documentation-ui/src/main/resources/Documentation/Code/Translations.xml
+@@ -78,8 +78,14 @@ documentation.panels.quicklink=Documentation
+ documentation.panels.htmlExport.title=Export and move to documentation
+ documentation.panels.htmlExport.export=Export in HTML
+ 
++# Export PDF panel
++documentation.panels.htmlExport.title=Export PDF
++documentation.panels.htmlExport.export=Export in PDF
++
+ # Move panel
+ documentation.panels.movepage.move=Move to documentation
++
++
+     
+ # Section sheet
+ section.sheet.notIncludedInExport=The following section will not be included as part of a documentation export.</content>
+-- 
+2.30.2
+

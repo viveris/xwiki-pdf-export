@@ -69,6 +69,12 @@ Each attachment of the documentation pages must be imported as an attachment (e.
 Be sure to have all your attachments imported into the pages.
 Create a page on xwiki outside the documentation application and paste the script in the source code of this page then simply use the xwiki PDF export
 
+## Future Developements
+
+HTML export does not work.
+Importing existing pages in the application is not automated.
+Select pages to export.
+
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 Please make sure to update tests as appropriate.
